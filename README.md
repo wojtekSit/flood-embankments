@@ -4,89 +4,112 @@
 
 ## Overview
 
-**Flood Report** is a web-based application developed as part of an engineering thesis titled:
+**Flood Report** is a lightweight web-based application developed as part of an engineering thesis:
 
 **"Struktura danych przestrzennych do monitoringu wybranej infrastruktury przeciwpowodziowej – wały przeciwpowodziowe"**  
 (*"Spatial Data Structure for Monitoring Selected Flood Protection Infrastructure – Flood Embankments"*)
 
-This application aims to support local flood protection leaders and emergency services by providing a simple and effective tool to report and monitor issues related to man-made flood embankments.
+This application helps local flood protection leaders and emergency services report and monitor issues related to flood embankments through a simple, map-based interface.
 
 ## Features
 
-- 📍 **Map-based interface** – Easily view, report, and locate issues on flood embankments.
-- 📝 **Issue reporting form** – Submit incidents such as cracks, seepage, or erosion.
-- 🗃️ **Spatial data integration** – Built on a geo-structured data model tailored for flood protection use cases.
-- 📊 **Database storage** – Issues are stored with spatial and descriptive metadata.
-- 🔐 **User roles (future)** – Intended support for verified local leaders or administrative users.
+- 📍 **Interactive map** – View and pinpoint issues directly on the map.
+- 📝 **Issue reporting form** – Report incidents such as cracks, seepage, or erosion.
+- 🗃️ **Spatial data storage** – Each report includes precise geolocation and descriptive details.
+- 💾 **File uploads** – Attach photos to reports for better documentation.
 
 ## Target Users
 
 This tool is intended for:
 - Local flood protection leaders (`społeczny nadzorca wałów`)
 - Municipal flood response coordinators
-- Engineering researchers or students studying geoinformatics or hydrology
+- Engineering students or researchers in geoinformatics and hydrology
 
 ## Tech Stack
 
-- 🧭 Frontend: HTML, JavaScript, Leaflet.js
-- 🛠 Backend: Node.js (Express)
-- 🗂 Database: PostgreSQL + PostGIS
-- 🗺️ Mapping: Leaflet with spatial data overlays
+- 🌐 Frontend: HTML, CSS, JavaScript (Leaflet.js)
+- 🛠 Backend: PHP (simple REST API)
+- 🗂 Database: MySQL with spatial data types (POINT)
+- 🗺️ Mapping: Leaflet with OpenStreetMap tiles
 
 ## How to Run Locally
 
 ### Prerequisites
 
-- Node.js ≥ 14
-- PostgreSQL with PostGIS enabled
-- Git
+- PHP (e.g., via XAMPP, MAMP, WAMP)
+- MySQL/MariaDB
+- Web browser (modern)
 
-### Installation
+### Installation & Setup
 
-```bash
-git clone https://github.com/wojtekSit/flood-report.git
-cd flood-report
-npm install
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/wojtekSit/flood-embankments.git
+   cd flood-embankments
 
-Database Setup
-Create a PostgreSQL database.
+2. Place the project in your web server directory (e.g., C:\xampp\htdocs\flood-embankments).
 
-Enable the PostGIS extension.
+3. Create a MySQL database (e.g., flood_db) and run the SQL scripts to set up tables:
+CREATE TABLE users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  code_hash VARCHAR(255) NOT NULL
+);
 
-Run the SQL scripts provided in the /sql/ directory to set up the schema.
+CREATE TABLE flood_reports (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT,
+  description TEXT,
+  coordinates POINT NOT NULL,
+  photo_path VARCHAR(255),
+  report_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  SPATIAL INDEX(coordinates)
+);
+4. Add at least one user with a code, e.g. (replace hash with one generated using PHP’s password_hash):
 
-Update the database connection settings in the app’s configuration file.
+INSERT INTO users (name, code_hash) VALUES ('Jan Kowalski', 'YOUR_HASH_HERE');
 
-Start the Server
-bash
-Copy
-Edit
-npm start
-Open your browser at http://localhost:3000
+5. Update your database connection in api/db.php:
+
+$host = '127.0.0.1';
+$dbname = 'flood_db';
+$user = 'root';  // or your DB user
+$pass = '';      // or your DB password
+
+6. Start Apache and MySQL E.G. in XAMPP
+
+7. Open your browser and go to 
+
+http://localhost/flood-embankments/index.php
 
 Usage
-Navigate the map to your local area.
+Navigate the interactive map to your area.
 
-Click on an embankment or use the form to report a new issue.
+Click on the map to set the location of the issue.
 
-Fill in the details: type of issue, severity, and description.
+Fill in the issue description, your user code, and optionally attach a photo.
 
-Submit and track the report.
+Submit the report.
 
-Screenshots
+Existing reports are shown on the second map with details and photos.
 
 License
 This project is licensed under the MIT License.
 
 Author
 Wojciech Sitko
-Engineering Thesis – Wydział Geoinżynierii, Górnictwa i Geologii
-PWR Wroclaw University of Science and Technology, Wrocław
-Advisor: Dr Krzysztof Chudy
+Engineering Thesis – Faculty of Geoengineering, Mining and Geology
+Wrocław University of Science and Technology
+Advisor: Dr. Krzysztof Chudy
 
 Acknowledgments
 Leaflet.js for interactive maps
 
-PostGIS for spatial data capabilities
+OpenStreetMap contributors for map tiles
 
-PWR for academic support
+PHP and MySQL for the backend infrastructure
+
+yaml
+Copy
+Edit
