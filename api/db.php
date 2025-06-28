@@ -1,8 +1,8 @@
 <?php
 $host = '127.0.0.1';
-$dbname = 'flood_db'; // wpisz dokładnie nazwę bazy, którą stworzyłeś w phpMyAdmin
-$user = 'root';       // w XAMPP to domyślnie 'root'
-$pass = '';           // w XAMPP domyślnie bez hasła
+$dbname = 'flood_db';
+$user = 'root';
+$pass = '';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $user, $pass);

@@ -50,32 +50,33 @@ This tool is intended for:
 2. Place the project in your web server directory (e.g., C:\xampp\htdocs\flood-embankments).
 
 3. Create a MySQL database (e.g., flood_db) and run the SQL scripts to set up tables:
-CREATE TABLE users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  code_hash VARCHAR(255) NOT NULL
-);
+    ```bash
+    CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    code_hash VARCHAR(255) NOT NULL
+    );
 
-CREATE TABLE flood_reports (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT,
-  description TEXT,
-  coordinates POINT NOT NULL,
-  photo_path VARCHAR(255),
-  report_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id),
-  SPATIAL INDEX(coordinates)
-);
+    CREATE TABLE flood_reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    description TEXT,
+    coordinates POINT NOT NULL,
+    photo_path VARCHAR(255),
+    report_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    SPATIAL INDEX(coordinates)
+    );
 4. Add at least one user with a code, e.g. (replace hash with one generated using PHP’s password_hash):
-
-INSERT INTO users (name, code_hash) VALUES ('Jan Kowalski', 'YOUR_HASH_HERE');
+    ```bash
+    INSERT INTO users (name, code_hash) VALUES ('Jan Kowalski', 'YOUR_HASH_HERE');
 
 5. Update your database connection in api/db.php:
-
-$host = '127.0.0.1';
-$dbname = 'flood_db';
-$user = 'root';  // or your DB user
-$pass = '';      // or your DB password
+    ```bash
+    $host = '127.0.0.1';
+    $dbname = 'flood_db';
+    $user = 'root';  // or your DB user
+    $pass = '';      // or your DB password
 
 6. Start Apache and MySQL E.G. in XAMPP
 
