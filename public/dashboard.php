@@ -196,6 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <section class="space-lg">
       <header class="section-header">
         <h2 class="h2">Twoje zgłoszenia</h2>
+        <a href="export_geojson.php" class="btn btn--ghost">Eksport do GeoJSON</a>
         <a href="map.php" class="btn btn--ghost">Zobacz mapę</a>
       </header>
 
