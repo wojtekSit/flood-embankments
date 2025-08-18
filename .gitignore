@@ -1,0 +1,14 @@
+# === PHP / Composer ===
+/vendor/
+/composer.lock
+
+# === System / IDE ===
+/.idea/
+/.vscode/
+/.DS_Store
+
+# === Logs / cache ===
+/*.log
+/tmp/
+/cache/
+/node_modules/
