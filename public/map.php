@@ -2,53 +2,81 @@
 require_once '../includes/auth.php';
 require_once '../config/db.php';
 
-// Pobierz wszystkie zgłoszenia z koordynatami
-$stmt = $pdo->query("SELECT object_type, issue_type, gps_lat, gps_lng, damage_level, is_closed, created_at FROM reports WHERE gps_lat IS NOT NULL AND gps_lng IS NOT NULL");
+$stmt = $pdo->query("
+    SELECT object_type, issue_type, gps_lat, gps_lng, damage_level, is_closed, created_at 
+    FROM reports 
+    WHERE gps_lat IS NOT NULL AND gps_lng IS NOT NULL
+");
 $reports = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <title>Mapa zgłoszeń</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <style>
-        body { margin: 0; font-family: sans-serif; }
-        #map { height: 100vh; width: 100vw; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mapa zgłoszeń</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="/public/app.css?v=1">
+  <style>
+    html,body{margin:0;height:100%}
+    #map{height:100%;width:100%}
+    /* custom popup style */
+    .leaflet-popup-content{
+      font-size: 0.95rem;
+      line-height: 1.4;
+      max-width: 260px;
+      margin: 6px 0;
+    }
+    .popup-card{
+      background: var(--surface);
+      border: 1px solid #1f2330;
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: .9rem;
+    }
+    .popup-card b{display:block; font-size:1rem; margin-bottom:4px;}
+    .popup-meta{color: var(--muted); font-size:.8rem; margin-top:6px;}
+    .leaflet-popup-content-wrapper{
+      background:transparent;
+      box-shadow:none;
+    }
+    .leaflet-popup-tip{background:var(--surface);}
+    /* return button */
+    .back-btn{
+      position:absolute;top:12px;left:12px;z-index:1000;
+    }
+  </style>
 </head>
 <body>
+  <div id="map"></div>
+  <a href="dashboard.php" class="back-btn">
+    <button class="btn btn--ghost">← Wróć do panelu</button>
+  </a>
 
-<div id="map"></div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+  const map = L.map('map').setView([52.0,19.0],6);
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script>
-const map = L.map('map').setView([52.0, 19.0], 6); // środek Polski
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap'
+  }).addTo(map);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
-}).addTo(map);
+  const reports = <?= json_encode($reports, JSON_UNESCAPED_UNICODE) ?>;
 
-// Lista zgłoszeń z PHP → JS
-const reports = <?= json_encode($reports, JSON_UNESCAPED_UNICODE) ?>;
-
-reports.forEach(report => {
-    const marker = L.marker([report.gps_lat, report.gps_lng]).addTo(map);
+  reports.forEach(r=>{
+    const marker = L.marker([r.gps_lat,r.gps_lng]).addTo(map);
     const popup = `
-        <b>${report.object_type}</b><br>
-        Uszkodzenie: ${report.issue_type}<br>
-        Stopień: ${report.damage_level}<br>
-        Status: ${parseInt(report.is_closed) === 1 ? 'Zamknięte ✅' : 'Otwarte'}<br>
-        Data: ${report.created_at}
+      <div class="popup-card">
+        <b>${r.object_type}</b>
+        Uszkodzenie: ${r.issue_type}<br>
+        Stopień: ${r.damage_level}<br>
+        Status: ${parseInt(r.is_closed)===1?'Zamknięte ✅':'Otwarte'}<br>
+        <div class="popup-meta">📅 ${r.created_at}</div>
+      </div>
     `;
     marker.bindPopup(popup);
-});
-</script>
-
+  });
+  </script>
 </body>
-<a href="dashboard.php" style="position:absolute; top:10px; left:10px; z-index:1000;">
-    <button style="padding: 6px 12px;">← Wróć do panelu</button>
-</a>
-
 </html>

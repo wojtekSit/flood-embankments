@@ -4,6 +4,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require_once '../config/db.php';
 
+$error = ""; // tylko do ładnego wyświetlania komunikatów
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -13,26 +15,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {
-        echo "Użytkownik nie istnieje.";
+        $error = "Użytkownik nie istnieje.";
     } elseif (!$user['is_approved']) {
-        echo "Konto nie zostało jeszcze zatwierdzone przez administratora.";
+        $error = "Konto nie zostało jeszcze zatwierdzone przez administratora.";
     } elseif (!password_verify($password, $user['password'])) {
-        echo "Nieprawidłowe hasło.";
+        $error = "Nieprawidłowe hasło.";
     } else {
         session_regenerate_id(true); // bezpieczeństwo
-        $_SESSION['user_id']    = (int)$user['id'];
-        $_SESSION['user_name']  = $user['name'];
-        $_SESSION['is_admin']   = (int)$user['is_admin'];     
+        $_SESSION['user_id']   = (int)$user['id'];
+        $_SESSION['user_name'] = $user['name'];
+        $_SESSION['is_admin']  = (int)$user['is_admin'];
         header('Location: dashboard.php');
         exit;
     }
 }
 ?>
-<form method="post">
-    <input type="email" name="email" placeholder="Email" required>
-    <input type="password" name="password" placeholder="Hasło" required>
-    <button type="submit">Zaloguj się</button>
-</form>
-<a href="register.php">
-    <button type="button">Zarejestruj się</button>
-</a>
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Logowanie</title>
+  <link rel="stylesheet" href="/public/app.css?v=1">
+</head>
+<body>
+  <main class="auth-wrap">
+    <section class="card auth-card">
+      <header class="section-header" style="margin-bottom:16px;">
+        <h1 class="site-title" style="font-size:1.25rem;margin:0;">Zaloguj się</h1>
+      </header>
+
+      <?php if (!empty($error)): ?>
+        <div class="alert alert--error" role="alert" aria-live="assertive">
+          <?= htmlspecialchars($error) ?>
+        </div>
+      <?php endif; ?>
+
+      <form method="post" class="form" autocomplete="on" novalidate>
+        <div class="form__group">
+          <label for="email" class="form__label">Email</label>
+          <input id="email" name="email" class="input"
+                 type="email" placeholder="twoj@email.pl"
+                 required autocomplete="email" autofocus>
+        </div>
+
+        <div class="form__group">
+          <label for="password" class="form__label">Hasło</label>
+          <input id="password" name="password" class="input"
+                 type="password" placeholder="••••••••"
+                 required autocomplete="current-password">
+        </div>
+
+        <div class="form__actions">
+          <button class="btn" type="submit">Zaloguj się</button>
+        </div>
+      </form>
+
+      <div class="row gap-sm" style="margin-top:12px;">
+        <a class="btn btn--ghost" href="register.php">Zarejestruj się</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

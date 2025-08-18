@@ -11,112 +11,70 @@ $user_id = $_SESSION['user_id'];
 $errors = [];
 $success = "";
 
-// CSRF (good practice)
+// form handling (LOGIKA BEZ ZMIAN)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!isset($_POST['csrf']) || !hash_equals($_SESSION['csrf'] ?? '', $_POST['csrf'])) {
-        $errors[] = "Nieprawidłowy token formularza. Odśwież stronę i spróbuj ponownie.";
-    }
-}
-
-if (empty($errors) && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    // sanitize
-    $object_type  = trim($_POST['object_type'] ?? '');
-    $issue_type   = trim($_POST['issue_type'] ?? '');
-    $gps_lat      = trim($_POST['gps_lat'] ?? '');
-    $gps_lng      = trim($_POST['gps_lng'] ?? '');
-    $damage_level = (int)($_POST['damage_level'] ?? 0);
-    $description  = trim($_POST['description'] ?? '');
+    $object_type = $_POST['object_type'];
+    $issue_type = $_POST['issue_type'];
+    $gps_lat = $_POST['gps_lat'];
+    $gps_lng = $_POST['gps_lng'];
+    $damage_level = $_POST['damage_level'];
+    $description = $_POST['description'];
 
     // validate GPS
-    if ($gps_lat === '' || $gps_lng === '') {
+    if (empty($gps_lat) || empty($gps_lng)) {
         $errors[] = "Musisz wybrać lokalizację na mapie.";
-    } else {
-        if (!is_numeric($gps_lat) || !is_numeric($gps_lng)) {
-            $errors[] = "Nieprawidłowe współrzędne.";
-        } else {
-            $lat = (float)$gps_lat;
-            $lng = (float)$gps_lng;
-            if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
-                $errors[] = "Współrzędne poza zakresem.";
-            }
-        }
     }
 
-    // validate damage
-    if ($damage_level < 1 || $damage_level > 5) {
-        $errors[] = "Stopień uszkodzenia musi być w zakresie 1–5.";
-    }
+    // validate photo
+    if (isset($_FILES['photo']) && $_FILES['photo']['error'] == 0) {
+        $photo_name = uniqid() . '_' . basename($_FILES['photo']['name']);
+        $target_dir = "../uploads/";
+        $target_file = $target_dir . $photo_name;
 
-    // validate photo (size/type)
-    if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
-        $allowed = ['image/jpeg','image/png','image/webp','image/gif'];
         $file_type = mime_content_type($_FILES['photo']['tmp_name']);
-        $max_bytes = 6 * 1024 * 1024; // 6MB
-
-        if (!in_array($file_type, $allowed, true)) {
+        if (str_starts_with($file_type, 'image/')) {
+            move_uploaded_file($_FILES['photo']['tmp_name'], $target_file);
+        } else {
             $errors[] = "Nieprawidłowy format zdjęcia.";
-        } elseif ($_FILES['photo']['size'] > $max_bytes) {
-            $errors[] = "Plik jest zbyt duży (max 6MB).";
         }
     } else {
         $errors[] = "Zdjęcie jest wymagane.";
     }
 
-    // insert if ok
     if (empty($errors)) {
-        $photo_name = uniqid('img_', true) . '.jpg';
-        $target_dir = dirname(__DIR__) . "/uploads/";
-        if (!is_dir($target_dir)) mkdir($target_dir, 0755, true);
-        $target_file = $target_dir . $photo_name;
+      $stmt = $pdo->prepare("
+      INSERT INTO reports (
+          user_id, object_type, issue_type,
+          gps_lat, gps_lng, gps_point,
+          photo, damage_level, description
+      )
+      VALUES (
+          ?, ?, ?, ?, ?, ST_SRID(POINT(?, ?), 4326), ?, ?, ?
+      )
+  ");
 
-        // Re-encode to JPEG (strips EXIF) — optional hardening
-        $img = imagecreatefromstring(file_get_contents($_FILES['photo']['tmp_name']));
-        if ($img) {
-            imagejpeg($img, $target_file, 85);
-            imagedestroy($img);
-        } else {
-            $errors[] = "Nie można przetworzyć obrazu.";
-        }
-
-        if (empty($errors)) {
-            $stmt = $pdo->prepare("
-                INSERT INTO reports (
-                    user_id, object_type, issue_type,
-                    gps_lat, gps_lng, gps_point,
-                    photo, damage_level, description
-                )
-                VALUES (
-                    ?, ?, ?, ?, ?, ST_SRID(POINT(?, ?), 4326), ?, ?, ?
-                )
-            ");
-
-            $stmt->execute([
-                $user_id,
-                $object_type,
-                $issue_type,
-                $gps_lat,
-                $gps_lng,
-                $gps_lng,  // POINT(lng, lat) = (X, Y)
-                $gps_lat,
-                $photo_name,
-                $damage_level,
-                $description
-            ]);
-            $success = "Zgłoszenie zostało zapisane.";
-        }
+  $stmt->execute([
+      $user_id,
+      $object_type,
+      $issue_type,
+      $gps_lat,
+      $gps_lng,
+      $gps_lng,
+      $gps_lat, // lat musi byc drugie
+      $photo_name,
+      $damage_level,
+      $description
+  ]);
+        $success = "Zgłoszenie zostało zapisane.";
     }
 }
-
-// prepare CSRF for next request
-$_SESSION['csrf'] = bin2hex(random_bytes(16));
 ?>
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Nowe zgłoszenie</title>
-  <link rel="preconnect" href="https://unpkg.com">
+  <title>Formularz zgłoszenia</title>
   <link rel="stylesheet" href="/public/app.css?v=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 </head>
@@ -153,20 +111,18 @@ $_SESSION['csrf'] = bin2hex(random_bytes(16));
 
     <section class="card">
       <form method="post" enctype="multipart/form-data" class="form" id="reportForm" novalidate>
-        <input type="hidden" name="csrf" value="<?= $_SESSION['csrf'] ?>">
-
         <div class="form__group">
-          <label for="object_type" class="form__label">Typ obiektu</label>
+          <label class="form__label" for="object_type">Typ obiektu</label>
           <select id="object_type" name="object_type" class="input" required>
             <option value="Wał przeciwpowodziowy">Wał przeciwpowodziowy</option>
             <option value="Jaz">Jaz</option>
             <option value="Przepust">Przepust</option>
             <option value="Śluza">Śluza</option>
-            <option value="RowyMelioracyjne">Rowy melioracyjne</option>
+            <option value="RowyMelioracyjne">RowyMelioracyjne</option>
             <option value="Zbiornik">Zbiornik retencyjny</option>
             <option value="WylotKanalizacjiDeszczowej">Wylot kanalizacji deszczowej</option>
-            <option value="BarieraMobilna">Bariera mobilna / Szandory</option>
-            <option value="RowyOdwadniajace">Rowy odwadniające / Drenaże osiedlowe</option>
+            <option value="BarieraMobilna">Bariera mobilna/Szandory</option>
+            <option value="RowyOdwadniajace">Rowy odwadniające/Drenaże osiedlowe</option>
             <option value="StudzienkiKratkiSciekowe">Studzienki i kratki ściekowe</option>
             <option value="RowyCieki">Zastawka w rowie lub małym cieku</option>
             <option value="Przempompownia">Przepompownia osiedlowa</option>
@@ -175,15 +131,15 @@ $_SESSION['csrf'] = bin2hex(random_bytes(16));
         </div>
 
         <div class="form__group">
-          <label for="issue_type" class="form__label">Rodzaj uszkodzenia</label>
-          <input id="issue_type" name="issue_type" class="input" type="text" required placeholder="np. rozmycie skarpy, zapadnięcie, zator…">
+          <label class="form__label" for="issue_type">Rodzaj uszkodzenia</label>
+          <input id="issue_type" class="input" type="text" name="issue_type" required placeholder="np. rozmycie skarpy, zator…">
         </div>
 
         <div class="form__group">
           <label class="form__label">Lokalizacja</label>
           <div id="map" class="map" aria-label="Mapa wyboru lokalizacji"></div>
           <div class="row gap-sm">
-            <button type="button" id="btnGeo" class="btn btn--ghost">📍 Użyj mojej lokalizacji</button>
+            <button type="button" class="btn btn--ghost" onclick="getLocation()">📍 Użyj mojej lokalizacji</button>
             <span id="coords_display" class="muted" aria-live="polite"></span>
           </div>
           <input type="hidden" name="gps_lat" id="gps_lat" required>
@@ -191,8 +147,8 @@ $_SESSION['csrf'] = bin2hex(random_bytes(16));
         </div>
 
         <div class="form__group">
-          <label for="photo" class="form__label">Zdjęcie</label>
-          <input id="photo" name="photo" class="input" type="file" accept="image/*" required>
+          <label class="form__label" for="photo">Zdjęcie</label>
+          <input id="photo" class="input" type="file" name="photo" accept="image/*" required>
           <div id="photo_preview" class="preview" hidden>
             <img alt="Podgląd zdjęcia" id="photo_img">
             <span id="photo_name" class="muted"></span>
@@ -200,13 +156,13 @@ $_SESSION['csrf'] = bin2hex(random_bytes(16));
         </div>
 
         <div class="form__group">
-          <label for="damage_level" class="form__label">Stopień uszkodzenia (1–5)</label>
-          <input id="damage_level" name="damage_level" class="input" type="number" inputmode="numeric" min="1" max="5" required>
+          <label class="form__label" for="damage_level">Stopień uszkodzenia (1-5)</label>
+          <input id="damage_level" class="input" type="number" name="damage_level" min="1" max="5" required>
         </div>
 
         <div class="form__group">
-          <label for="description" class="form__label">Opis</label>
-          <textarea id="description" name="description" class="input" rows="4" placeholder="Krótki opis sytuacji (opcjonalnie)"></textarea>
+          <label class="form__label" for="description">Opis</label>
+          <textarea id="description" class="input" name="description" rows="4" placeholder="Krótki opis (opcjonalnie)"></textarea>
         </div>
 
         <div class="form__actions">
@@ -221,6 +177,7 @@ $_SESSION['csrf'] = bin2hex(random_bytes(16));
       </header>
       <form method="get" action="report.php" target="_blank" class="row gap-sm">
         <?php
+          // domyślny zakres – ostatnie 7 dni
           $today = date('Y-m-d');
           $week_ago = date('Y-m-d', strtotime('-7 days'));
         ?>
@@ -245,44 +202,41 @@ $_SESSION['csrf'] = bin2hex(random_bytes(16));
       <div class="table-responsive">
         <table class="table">
           <thead>
-            <tr>
-              <th>ID</th>
-              <th>Typ</th>
-              <th>Uszkodzenie</th>
-              <th>GPS</th>
-              <th>Zdjęcie</th>
-              <th>Stopień</th>
-              <th>Data</th>
-              <th>Akcja</th>
-            </tr>
+          <tr>
+            <th>ID</th>
+            <th>Typ</th>
+            <th>Uszkodzenie</th>
+            <th>GPS</th>
+            <th>Zdjęcie</th>
+            <th>Stopień</th>
+            <th>Data</th>
+            <th>Akcja</th>
+          </tr>
           </thead>
           <tbody>
           <?php
-            $stmt = $pdo->prepare("SELECT * FROM reports WHERE user_id = ? ORDER BY created_at DESC");
-            $stmt->execute([$user_id]);
-            foreach ($stmt as $row):
+          $stmt = $pdo->prepare("SELECT * FROM reports WHERE user_id = ? ORDER BY created_at DESC");
+          $stmt->execute([$user_id]);
+          foreach ($stmt as $row) {
+              echo "<tr>";
+              echo "<td data-label='ID'>".(int)$row['id']."</td>";
+              echo "<td data-label='Typ'>".htmlspecialchars($row['object_type'])."</td>";
+              echo "<td data-label='Uszkodzenie'>".htmlspecialchars($row['issue_type'])."</td>";
+              echo "<td data-label='GPS'>".htmlspecialchars($row['gps_lat']).", ".htmlspecialchars($row['gps_lng'])."</td>";
+              echo "<td data-label='Zdjęcie'><img src='../uploads/".htmlspecialchars($row['photo'])."?v=".time()."' width='80' height='60' style='object-fit:cover;border-radius:8px;' alt='miniatura'></td>";
+              echo "<td data-label='Stopień'>".(int)$row['damage_level']."</td>";
+              echo "<td data-label='Data'>".htmlspecialchars($row['created_at'])."</td>";
+              echo "<td data-label='Akcja'>";
+              if (!$row['is_closed']) {
+                  echo "<a class='link' href='edit_report.php?id=".(int)$row['id']."'>Edytuj</a> <span class='muted'>·</span> ";
+                  echo "<a class='link' href='close_report.php?id=".(int)$row['id']."'>Zamknij</a>";
+              } else {
+                  echo "Zamknięte ✅";
+              }
+              echo "</td>";
+              echo "</tr>";
+          }
           ?>
-            <tr>
-              <td data-label="ID"><?= (int)$row['id'] ?></td>
-              <td data-label="Typ"><?= htmlspecialchars($row['object_type']) ?></td>
-              <td data-label="Uszkodzenie"><?= htmlspecialchars($row['issue_type']) ?></td>
-              <td data-label="GPS"><?= htmlspecialchars($row['gps_lat']) ?>, <?= htmlspecialchars($row['gps_lng']) ?></td>
-              <td data-label="Zdjęcie">
-                <img src="../uploads/<?= htmlspecialchars($row['photo']) ?>?v=<?= time() ?>" width="80" height="60" style="object-fit:cover;border-radius:8px;" alt="miniatura">
-              </td>
-              <td data-label="Stopień"><?= (int)$row['damage_level'] ?></td>
-              <td data-label="Data"><?= htmlspecialchars($row['created_at']) ?></td>
-              <td data-label="Akcja">
-                <?php if (!$row['is_closed']): ?>
-                  <a class="link" href="edit_report.php?id=<?= (int)$row['id'] ?>">Edytuj</a>
-                  <span class="muted">·</span>
-                  <a class="link" href="close_report.php?id=<?= (int)$row['id'] ?>" onclick="return confirm('Na pewno zamknąć zgłoszenie?')">Zamknij</a>
-                <?php else: ?>
-                  Zamknięte ✅
-                <?php endif; ?>
-              </td>
-            </tr>
-          <?php endforeach; ?>
           </tbody>
         </table>
       </div>
@@ -290,6 +244,74 @@ $_SESSION['csrf'] = bin2hex(random_bytes(16));
   </main>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="/public/app.js?v=1" defer></script>
+  <script src="/public/app.js?v=1"></script>
+  <script>
+  let map;           // map variable
+  let marker = null; // marker variable
+
+  document.addEventListener("DOMContentLoaded", function () {
+    map = L.map('map').setView([52.0, 19.0], 6);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // klik na mapie przesuwa marker
+    map.on('click', function (e) {
+      const lat = +e.latlng.lat.toFixed(6);
+      const lng = +e.latlng.lng.toFixed(6);
+      setMarker(lat, lng);
+      document.getElementById('gps_lat').value = lat;
+      document.getElementById('gps_lng').value = lng;
+      document.getElementById('coords_display').innerText = `📍 Wybrana lokalizacja: ${lat}, ${lng}`;
+    });
+  });
+
+  // Geolokalizacja: ustaw marker i widok, NIE twórz mapy ponownie
+  function getLocation() {
+    if (!navigator.geolocation) {
+      alert("Geolokalizacja nie jest wspierana przez tę przeglądarkę.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      function (position) {
+        const lat = +position.coords.latitude.toFixed(6);
+        const lng = +position.coords.longitude.toFixed(6);
+        setMarker(lat, lng);
+        map.setView([lat, lng], 15);
+        document.getElementById('gps_lat').value = lat;
+        document.getElementById('gps_lng').value = lng;
+        document.getElementById('coords_display').innerText = `📍 Twoja lokalizacja: ${lat}, ${lng}`;
+      },
+      function (error) {
+        alert("Błąd pobierania lokalizacji: " + error.message);
+      }
+    );
+  }
+
+  // Jedyny mechanizm tworzenia/przesuwania markera
+  function setMarker(lat, lng) {
+    if (!map) {
+      console.error("Mapa nie jest jeszcze gotowa!");
+      return;
+    }
+    const latlng = L.latLng(lat, lng);
+    if (marker) {
+      marker.setLatLng(latlng);
+    } else {
+      marker = L.marker(latlng).addTo(map);
+    }
+  }
+
+  // Walidacja przed wysyłką: wymagaj współrzędnych, skądkolwiek by nie były
+  document.querySelector("form").addEventListener("submit", function (e) {
+    const lat = document.getElementById('gps_lat').value;
+    const lng = document.getElementById('gps_lng').value;
+    if (!lat || !lng) {
+      e.preventDefault();
+      alert("Musisz wybrać lokalizację (kliknij na mapie lub użyj przycisku geolokalizacji).");
+    }
+  });
+  </script>
 </body>
 </html>
