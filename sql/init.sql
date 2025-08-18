@@ -29,7 +29,7 @@ CREATE TABLE reports (
     issue_type    VARCHAR(100)    NOT NULL,
     gps_lat       DOUBLE          NOT NULL,
     gps_lng       DOUBLE          NOT NULL,
-    gps_point     POINT GENERATED ALWAYS AS (POINT(gps_lng, gps_lat)) STORED NOT NULL,
+    gps_point POINT NOT NULL SRID 4326,
     photo         VARCHAR(255)    NOT NULL,
     damage_level  TINYINT         NOT NULL,         
     description   TEXT,

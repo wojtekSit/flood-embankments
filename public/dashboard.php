@@ -10,8 +10,7 @@ require_once '../config/db.php';
 $user_id = $_SESSION['user_id'];
 $errors = [];
 $success = "";
-
-// Obsługa formularza
+// form handling
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $object_type = $_POST['object_type'];
     $issue_type = $_POST['issue_type'];
@@ -20,12 +19,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $damage_level = $_POST['damage_level'];
     $description = $_POST['description'];
 
-    // WALIDACJA GPS
+    // validate GPS
     if (empty($gps_lat) || empty($gps_lng)) {
         $errors[] = "Musisz wybrać lokalizację na mapie.";
     }
 
-    // WALIDACJA ZDJĘCIA
+    // validate photo
     if (isset($_FILES['photo']) && $_FILES['photo']['error'] == 0) {
         $photo_name = uniqid() . '_' . basename($_FILES['photo']['name']);
         $target_dir = "../uploads/";
@@ -42,11 +41,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $stmt = $pdo->prepare("INSERT INTO reports (user_id, object_type, issue_type, gps_lat, gps_lng, photo, damage_level, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([
-            $user_id, $object_type, $issue_type, $gps_lat, $gps_lng,
-            $photo_name, $damage_level, $description
-        ]);
+      $stmt = $pdo->prepare("
+      INSERT INTO reports (
+          user_id, object_type, issue_type,
+          gps_lat, gps_lng, gps_point,
+          photo, damage_level, description
+      )
+      VALUES (
+          ?, ?, ?, ?, ?, ST_SRID(POINT(?, ?), 4326), ?, ?, ?
+      )
+  ");
+  
+  $stmt->execute([
+      $user_id,
+      $object_type,
+      $issue_type,
+      $gps_lat,
+      $gps_lng,
+      $gps_lng,  
+      $gps_lat, // lat musi byc drugie
+      $photo_name,
+      $damage_level,
+      $description
+  ]);
         $success = "Zgłoszenie zostało zapisane.";
     }
 }
@@ -118,8 +135,8 @@ if ($success) echo "<p style='color:green;'>$success</p>";
 </form>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-let map;           // JEDYNA zmienna mapy
-let marker = null; // JEDYNY marker
+let map;           // map variable
+let marker = null; // marker variable
 
 document.addEventListener("DOMContentLoaded", function () {
   map = L.map('map').setView([52.0, 19.0], 6);
@@ -128,7 +145,7 @@ document.addEventListener("DOMContentLoaded", function () {
     attribution: '© OpenStreetMap'
   }).addTo(map);
 
-  // Klik na mapie: przesuń / utwórz ten sam marker
+  // klik na mapie przesuwa marker
   map.on('click', function (e) {
     const lat = +e.latlng.lat.toFixed(6);
     const lng = +e.latlng.lng.toFixed(6);
@@ -189,6 +206,18 @@ document.querySelector("form").addEventListener("submit", function (e) {
 </body>
 </html>
 <hr>
+<h2>Raport PDF</h2>
+<form method="get" action="report.php" target="_blank">
+    <?php
+    // domyślny zakres – ostatnie 7 dni
+    $today = date('Y-m-d');
+    $week_ago = date('Y-m-d', strtotime('-7 days'));
+    ?>
+    <label>Od: <input type="date" name="start" value="<?= $week_ago ?>"></label>
+    <label>Do: <input type="date" name="end" value="<?= $today ?>"></label>
+    <button type="submit">📄 Generuj raport PDF</button>
+</form>
+
 <h2>Twoje zgłoszenia</h2>
 <a href="map.php">
     <button type="button">Zobacz mapę wszystkich twoich zgłoszeń</button>
@@ -202,7 +231,7 @@ document.querySelector("form").addEventListener("submit", function (e) {
         <th>Zdjęcie</th>
         <th>Stopień</th>
         <th>Data</th>
-        <th>Akcja</th> <!-- NOWA KOLUMNA -->
+        <th>Akcja</th>
     </tr>
     <?php
     $stmt = $pdo->prepare("SELECT * FROM reports WHERE user_id = ? ORDER BY created_at DESC");
@@ -232,6 +261,8 @@ document.querySelector("form").addEventListener("submit", function (e) {
 </table>
 <p style="text-align: right;">
     Zalogowany jako <strong><?= htmlspecialchars($_SESSION['user_name']) ?></strong>
+    <?php if (!empty($_SESSION['is_admin']) && $_SESSION['is_admin']): ?>
+        | <a href="admin_users.php">Panel administracyjny</a>
+    <?php endif; ?>
     | <a href="logout.php">Wyloguj się</a>
 </p>
-
