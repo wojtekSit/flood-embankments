@@ -149,10 +149,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="form__group">
           <label class="form__label" for="photo">Zdjęcie</label>
           <input id="photo" class="input" type="file" name="photo" accept="image/*" required>
-          <div id="photo_preview" class="preview" hidden>
-            <img alt="Podgląd zdjęcia" id="photo_img">
-            <span id="photo_name" class="muted"></span>
-          </div>
         </div>
 
         <div class="form__group">
@@ -223,7 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               echo "<td data-label='Typ'>".htmlspecialchars($row['object_type'])."</td>";
               echo "<td data-label='Uszkodzenie'>".htmlspecialchars($row['issue_type'])."</td>";
               echo "<td data-label='GPS'>".htmlspecialchars($row['gps_lat']).", ".htmlspecialchars($row['gps_lng'])."</td>";
-              echo "<td data-label='Zdjęcie'><img src='../uploads/".htmlspecialchars($row['photo'])."?v=".time()."' width='80' height='60' style='object-fit:cover;border-radius:8px;' alt='miniatura'></td>";
+              echo "<td data-label='Zdjęcie'></td>";
               echo "<td data-label='Stopień'>".(int)$row['damage_level']."</td>";
               echo "<td data-label='Data'>".htmlspecialchars($row['created_at'])."</td>";
               echo "<td data-label='Akcja'>";

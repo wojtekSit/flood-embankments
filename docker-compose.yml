@@ -5,9 +5,9 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - .:/var/www/html # Twój kod
-      - vendor_data:/var/www/html/vendor # TRIK: vendor z obrazu/volumenu, nie z hosta
-      - ./uploads:/var/www/html/uploads # (opcjonalnie) żeby obrazki były na hoście
+      - .:/var/www/html
+      - vendor_data:/var/www/html/vendor
+      - ./uploads:/var/www/html/uploads
     depends_on:
       - db
 
