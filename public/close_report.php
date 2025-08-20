@@ -9,7 +9,7 @@ if (!isset($_GET['id'])) {
 $report_id = (int)$_GET['id'];
 $user_id   = $_SESSION['user_id'];
 
-$stmt = $pdo->prepare("SELECT * FROM reports WHERE id=? AND user_id=?");
+$stmt = $pdo->prepare("SELECT * FROM app_reports WHERE id=? AND user_id=?");
 $stmt->execute([$report_id, $user_id]);
 $report = $stmt->fetch();
 
@@ -20,7 +20,7 @@ if (!$report) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
-    $stmt = $pdo->prepare("UPDATE reports SET is_closed=1 WHERE id=?");
+    $stmt = $pdo->prepare("UPDATE app_reports SET is_closed=1 WHERE id=?");
     $stmt->execute([$report_id]);
     header("Location: dashboard.php?closed=1");
     exit;

@@ -15,7 +15,7 @@ if (!$start_date || !$end_date) {
 // Pobierz dane z bazy
 $stmt = $pdo->prepare("
     SELECT r.*, u.name, u.surname
-    FROM reports r
+    FROM app_reports r
     JOIN users u ON r.user_id = u.id
     WHERE DATE(r.created_at) BETWEEN ? AND ?
     ORDER BY r.created_at DESC

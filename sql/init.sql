@@ -2,13 +2,13 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
-DROP TABLE IF EXISTS reports;
-DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS app_reports;
+DROP TABLE IF EXISTS app_users;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- Użytkownicy
-CREATE TABLE users (
+CREATE TABLE app_users (
     id           INT AUTO_INCREMENT PRIMARY KEY,
     name         VARCHAR(100)      NOT NULL,
     surname      VARCHAR(100)      NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Zgłoszenia
-CREATE TABLE reports (
+CREATE TABLE app_reports (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     user_id       INT             NOT NULL,
     object_type   VARCHAR(100)    NOT NULL,

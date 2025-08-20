@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    $stmt = $pdo->prepare("SELECT id, name, password, is_approved, is_admin FROM users WHERE email = ?");
+    $stmt = $pdo->prepare("SELECT id, name, password, is_approved, is_admin FROM app_users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 

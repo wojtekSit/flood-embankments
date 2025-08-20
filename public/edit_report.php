@@ -9,7 +9,7 @@ if (!$id) {
     die("Brak ID zgłoszenia.");
 }
 
-$stmt = $pdo->prepare("SELECT * FROM reports WHERE id = ? AND user_id = ?");
+$stmt = $pdo->prepare("SELECT * FROM app_reports WHERE id = ? AND user_id = ?");
 $stmt->execute([$id, $user_id]);
 $report = $stmt->fetch();
 
@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $stmt = $pdo->prepare("
-        UPDATE reports 
+        UPDATE app_reports 
         SET object_type=?, issue_type=?, gps_lat=?, gps_lng=?, photo=?, damage_level=?, description=? 
         WHERE id=? AND user_id=?
     ");

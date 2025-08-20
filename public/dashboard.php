@@ -13,59 +13,6 @@ $success = "";
 
 // form handling (LOGIKA BEZ ZMIAN)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $object_type = $_POST['object_type'];
-  $issue_type = $_POST['issue_type'];
-  $gps_lat = $_POST['gps_lat'];
-  $gps_lng = $_POST['gps_lng'];
-  $damage_level = $_POST['damage_level'];
-  $description = $_POST['description'];
-
-  // validate GPS
-  if (empty($gps_lat) || empty($gps_lng)) {
-      $errors[] = "Musisz wybrać lokalizację na mapie.";
-  }
-
-    // validate photo
-  if (isset($_FILES['photo']) && $_FILES['photo']['error'] == 0) {
-    $img_info = getimagesize($_FILES['photo']['tmp_name']);
-    if ($img_info === false) {
-        $errors[] = "Nieprawidłowy plik graficzny.";
-    } else {
-        $mime = $img_info['mime'];
-        $src = null;
-
-        // wczytaj obrazek do GD w zależności od formatu
-        switch ($mime) {
-            case 'image/jpeg':
-                $src = imagecreatefromjpeg($_FILES['photo']['tmp_name']);
-                break;
-            case 'image/png':
-                $src = imagecreatefrompng($_FILES['photo']['tmp_name']);
-                // usuń przezroczystość (WebP w trybie truecolor + alpha też działa, ale bywa problematyczne)
-                imagepalettetotruecolor($src);
-                imagealphablending($src, true);
-                imagesavealpha($src, true);
-                break;
-            default:
-                $errors[] = "Obsługiwane formaty to JPG i PNG.";
-        }
-
-        if ($src) {
-            $photo_name = uniqid() . '.webp';
-            $target_dir = "../uploads/";
-            $target_file = $target_dir . $photo_name;
-
-            // konwersja do webp, jakość 80
-            if (!imagewebp($src, $target_file, 80)) {
-                $errors[] = "Nie udało się zapisać pliku jako WebP.";
-            }
-            imagedestroy($src);
-        }
-    }
-  } else {
-    $errors[] = "Zdjęcie jest wymagane.";
-  }
-
   $allowed = [
     "Wał przeciwpowodziowy" => [
       "Uszkodzenie korony wału",
@@ -141,6 +88,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       "Inne"
     ],
   ];
+  $object_type = $_POST['object_type'];
+  $issue_type = $_POST['issue_type'];
+  $gps_lat = $_POST['gps_lat'];
+  $gps_lng = $_POST['gps_lng'];
+  $damage_level = $_POST['damage_level'];
+  $description = $_POST['description'];
+
+  // validate GPS
+  if (empty($gps_lat) || empty($gps_lng)) {
+      $errors[] = "Musisz wybrać lokalizację na mapie.";
+  }
+
+    // validate photo
+  if (isset($_FILES['photo']) && $_FILES['photo']['error'] == 0) {
+    $img_info = getimagesize($_FILES['photo']['tmp_name']);
+    if ($img_info === false) {
+        $errors[] = "Nieprawidłowy plik graficzny.";
+    } else {
+        $mime = $img_info['mime'];
+        $src = null;
+
+        // wczytaj obrazek do GD w zależności od formatu
+        switch ($mime) {
+            case 'image/jpeg':
+                $src = imagecreatefromjpeg($_FILES['photo']['tmp_name']);
+                break;
+            case 'image/png':
+                $src = imagecreatefrompng($_FILES['photo']['tmp_name']);
+                // usuń przezroczystość (WebP w trybie truecolor + alpha też działa, ale bywa problematyczne)
+                imagepalettetotruecolor($src);
+                imagealphablending($src, true);
+                imagesavealpha($src, true);
+                break;
+            default:
+                $errors[] = "Obsługiwane formaty to JPG i PNG.";
+        }
+
+        if ($src) {
+            $photo_name = uniqid() . '.webp';
+            $target_dir = "../uploads/";
+            $target_file = $target_dir . $photo_name;
+
+            // konwersja do webp, jakość 80
+            if (!imagewebp($src, $target_file, 80)) {
+                $errors[] = "Nie udało się zapisać pliku jako WebP.";
+            }
+            imagedestroy($src);
+        }
+    }
+  } else {
+    $errors[] = "Zdjęcie jest wymagane.";
+  }
 
   if ($object_type === "Inny obiekt hydrotechniczny") {
       if (empty($description) || mb_strlen($description) < 10) {
@@ -156,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }  
   if (empty($errors)) {
     $stmt = $pdo->prepare("
-    INSERT INTO reports (
+    INSERT INTO app_reports (
         user_id, object_type, issue_type,
         gps_lat, gps_lng, gps_point,
         photo, damage_level, description
@@ -325,7 +324,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </thead>
           <tbody>
           <?php
-          $stmt = $pdo->prepare("SELECT * FROM reports WHERE user_id = ? ORDER BY created_at DESC");
+          $stmt = $pdo->prepare("SELECT * FROM app_reports WHERE user_id = ? ORDER BY created_at DESC");
           $stmt->execute([$user_id]);
           foreach ($stmt as $row) {
               echo "<tr>";

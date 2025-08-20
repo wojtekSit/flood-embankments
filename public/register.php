@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $phone    = $_POST['phone'];
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
 
-    $stmt = $pdo->prepare("INSERT INTO users (name, surname, email, phone, password) VALUES (?, ?, ?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT INTO app_users (name, surname, email, phone, password) VALUES (?, ?, ?, ?, ?)");
     try {
         $stmt->execute([$name, $surname, $email, $phone, $password]);
         $msg = "Rejestracja zakończona sukcesem. Poczekaj na zatwierdzenie konta.";

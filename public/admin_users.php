@@ -7,11 +7,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id'])) {
     $is_approved = isset($_POST['is_approved']) ? 1 : 0;
     $is_admin    = isset($_POST['is_admin']) ? 1 : 0;
 
-    $stmt = $pdo->prepare("UPDATE users SET is_approved=?, is_admin=? WHERE id=?");
+    $stmt = $pdo->prepare("UPDATE app_users SET is_approved=?, is_admin=? WHERE id=?");
     $stmt->execute([$is_approved, $is_admin, $user_id]);
 }
 
-$stmt = $pdo->query("SELECT id, name, surname, email, is_approved, is_admin FROM users ORDER BY id ASC");
+$stmt = $pdo->query("SELECT id, name, surname, email, is_approved, is_admin FROM app_users ORDER BY id ASC");
 $users = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>

@@ -29,6 +29,7 @@
             e.target.style.borderColor = '';
         }
     });
+
 })();
 // Drag-to-scroll dla .table-responsive (przewijanie także myszą/drag)
 (() => {
