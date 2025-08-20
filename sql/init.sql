@@ -37,7 +37,7 @@ CREATE TABLE app_reports (
     created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_reports_user FOREIGN KEY (user_id)
-        REFERENCES users(id) ON DELETE CASCADE,
+        REFERENCES app_users(id) ON DELETE CASCADE,
 
     -- Indeksy
     INDEX idx_reports_user (user_id),
