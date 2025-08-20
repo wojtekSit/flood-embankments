@@ -13,45 +13,158 @@ $success = "";
 
 // form handling (LOGIKA BEZ ZMIAN)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $object_type = $_POST['object_type'];
-    $issue_type = $_POST['issue_type'];
-    $gps_lat = $_POST['gps_lat'];
-    $gps_lng = $_POST['gps_lng'];
-    $damage_level = $_POST['damage_level'];
-    $description = $_POST['description'];
+  $object_type = $_POST['object_type'];
+  $issue_type = $_POST['issue_type'];
+  $gps_lat = $_POST['gps_lat'];
+  $gps_lng = $_POST['gps_lng'];
+  $damage_level = $_POST['damage_level'];
+  $description = $_POST['description'];
 
-    // validate GPS
-    if (empty($gps_lat) || empty($gps_lng)) {
-        $errors[] = "Musisz wybrać lokalizację na mapie.";
-    }
+  // validate GPS
+  if (empty($gps_lat) || empty($gps_lng)) {
+      $errors[] = "Musisz wybrać lokalizację na mapie.";
+  }
 
     // validate photo
-    if (isset($_FILES['photo']) && $_FILES['photo']['error'] == 0) {
-        $photo_name = uniqid() . '_' . basename($_FILES['photo']['name']);
-        $target_dir = "../uploads/";
-        $target_file = $target_dir . $photo_name;
-
-        $file_type = mime_content_type($_FILES['photo']['tmp_name']);
-        if (str_starts_with($file_type, 'image/')) {
-            move_uploaded_file($_FILES['photo']['tmp_name'], $target_file);
-        } else {
-            $errors[] = "Nieprawidłowy format zdjęcia.";
-        }
+  if (isset($_FILES['photo']) && $_FILES['photo']['error'] == 0) {
+    $img_info = getimagesize($_FILES['photo']['tmp_name']);
+    if ($img_info === false) {
+        $errors[] = "Nieprawidłowy plik graficzny.";
     } else {
-        $errors[] = "Zdjęcie jest wymagane.";
-    }
+        $mime = $img_info['mime'];
+        $src = null;
 
-    if (empty($errors)) {
-      $stmt = $pdo->prepare("
-      INSERT INTO reports (
-          user_id, object_type, issue_type,
-          gps_lat, gps_lng, gps_point,
-          photo, damage_level, description
-      )
-      VALUES (
-          ?, ?, ?, ?, ?, ST_SRID(POINT(?, ?), 4326), ?, ?, ?
-      )
-  ");
+        // wczytaj obrazek do GD w zależności od formatu
+        switch ($mime) {
+            case 'image/jpeg':
+                $src = imagecreatefromjpeg($_FILES['photo']['tmp_name']);
+                break;
+            case 'image/png':
+                $src = imagecreatefrompng($_FILES['photo']['tmp_name']);
+                // usuń przezroczystość (WebP w trybie truecolor + alpha też działa, ale bywa problematyczne)
+                imagepalettetotruecolor($src);
+                imagealphablending($src, true);
+                imagesavealpha($src, true);
+                break;
+            default:
+                $errors[] = "Obsługiwane formaty to JPG i PNG.";
+        }
+
+        if ($src) {
+            $photo_name = uniqid() . '.webp';
+            $target_dir = "../uploads/";
+            $target_file = $target_dir . $photo_name;
+
+            // konwersja do webp, jakość 80
+            if (!imagewebp($src, $target_file, 80)) {
+                $errors[] = "Nie udało się zapisać pliku jako WebP.";
+            }
+            imagedestroy($src);
+        }
+    }
+  } else {
+    $errors[] = "Zdjęcie jest wymagane.";
+  }
+
+  $allowed = [
+    "Wał przeciwpowodziowy" => [
+      "Uszkodzenie korony wału",
+      "Rozmycie skarpy",
+      "Obecność nor zwierząt",
+      "Niepożądana roślinność",
+      "Inne"
+    ],
+    "Jaz" => [
+      "Uszkodzone klapy/zasuwy",
+      "Niedrożność",
+      "Korozja elementów metalowych",
+      "Zły stan mechanizmu sterującego",
+      "Inne"
+    ],
+    "Przepust" => [
+      "Zatkanie przepustu",
+      "Uszkodzenie obudowy",
+      "Zniszczona krata",
+      "Zamulenie",
+      "Inne"
+    ],
+    "Śluza" => [
+      "Nieszczelność",
+      "Uszkodzony mechanizm",
+      "Zablokowane wrota",
+      "Inne"
+    ],
+    "RowyMelioracyjne" => [
+      "Zamulenie",
+      "Zator z roślinności",
+      "Uszkodzone brzegi",
+      "Inne"
+    ],
+    "Zbiornik retencyjny" => [
+      "Uszkodzenie grobli",
+      "Erozja skarp",
+      "Awaria urządzeń spustowych",
+      "Inne"
+    ],
+    "WylotKanalizacjiDeszczowej" => [
+      "Niedrożność",
+      "Cofka wody",
+      "Uszkodzenie konstrukcji",
+      "Inne"
+    ],
+    "Bariera mobilna/Szandory" => [
+      "Uszkodzenia elementów",
+      "Brak kompletności/dostępności",
+      "Inne"
+    ],
+    "Rowy odwadniające/Drenaże osiedlowe" => [
+      "Zamulenie",
+      "Zator",
+      "Zarośnięcie",
+      "Inne"
+    ],
+    "Studzienki i kratki ściekowe" => [
+      "Niedrożność",
+      "Zanieczyszczenie",
+      "Zapadnięcie",
+      "Inne"
+    ],
+    "Zastawka w rowie lub małym cieku" => [
+      "Nieszczelność",
+      "Zablokowanie",
+      "Korozja",
+      "Inne"
+    ],
+    "Przepompownia osiedlowa" => [
+      "Niedrożność wlotu/wylotu",
+      "Zalanie terenu wokół",
+      "Inne"
+    ],
+  ];
+
+  if ($object_type === "Inny obiekt hydrotechniczny") {
+      if (empty($description) || mb_strlen($description) < 10) {
+          $errors[] = "Dla innego obiektu podaj pełny opis w polu „Opis” (min. 10 znaków).";
+      }
+      $issue_type = "Inne";
+  } else {
+      if (!isset($allowed[$object_type])) {
+          $errors[] = "Nieprawidłowy typ obiektu.";
+      } elseif (!in_array($issue_type, $allowed[$object_type], true)) {
+          $errors[] = "Nieprawidłowy rodzaj uszkodzenia dla wybranego obiektu.";
+      }
+  }  
+  if (empty($errors)) {
+    $stmt = $pdo->prepare("
+    INSERT INTO reports (
+        user_id, object_type, issue_type,
+        gps_lat, gps_lng, gps_point,
+        photo, damage_level, description
+    )
+    VALUES (
+        ?, ?, ?, ?, ?, ST_SRID(POINT(?, ?), 4326), ?, ?, ?
+    )
+");
 
   $stmt->execute([
       $user_id,
@@ -130,9 +243,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </select>
         </div>
 
-        <div class="form__group">
+        <div class="form__group" id="issueGroup">
           <label class="form__label" for="issue_type">Rodzaj uszkodzenia</label>
-          <input id="issue_type" class="input" type="text" name="issue_type" required placeholder="np. rozmycie skarpy, zator…">
+          <select id="issue_type" name="issue_type" class="input" required></select>
+          <p id="issue_hint" class="muted" style="display:none;margin-top:6px;"></p>
         </div>
 
         <div class="form__group">
@@ -219,7 +333,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               echo "<td data-label='Typ'>".htmlspecialchars($row['object_type'])."</td>";
               echo "<td data-label='Uszkodzenie'>".htmlspecialchars($row['issue_type'])."</td>";
               echo "<td data-label='GPS'>".htmlspecialchars($row['gps_lat']).", ".htmlspecialchars($row['gps_lng'])."</td>";
-              echo "<td data-label='Zdjęcie'></td>";
+              echo "<td data-label='Zdjęcie'><img src='../uploads/".htmlspecialchars($row['photo'])."?v=".time()."' width='80' height='60' style='object-fit:cover;border-radius:8px;' alt='miniatura'></td>";
               echo "<td data-label='Stopień'>".(int)$row['damage_level']."</td>";
               echo "<td data-label='Data'>".htmlspecialchars($row['created_at'])."</td>";
               echo "<td data-label='Akcja'>";
@@ -308,6 +422,131 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       alert("Musisz wybrać lokalizację (kliknij na mapie lub użyj przycisku geolokalizacji).");
     }
   });
+  const ISSUE_OPTIONS = {
+    "Wał przeciwpowodziowy": [
+      "Uszkodzenie korony wału",
+      "Rozmycie skarpy",
+      "Obecność nor zwierząt",
+      "Niepożądana roślinność",
+      "Inne"
+    ],
+    "Jaz": [
+      "Uszkodzone klapy/zasuwy",
+      "Niedrożność",
+      "Korozja elementów metalowych",
+      "Zły stan mechanizmu sterującego",
+      "Inne"
+    ],
+    "Przepust": [
+      "Zatkanie przepustu",
+      "Uszkodzenie obudowy",
+      "Zniszczona krata",
+      "Zamulenie",
+      "Inne"
+    ],
+    "Śluza": [
+      "Nieszczelność",
+      "Uszkodzony mechanizm",
+      "Zablokowane wrota",
+      "Inne"
+    ],
+    "RowyMelioracyjne": [
+      "Zamulenie",
+      "Zator z roślinności",
+      "Uszkodzone brzegi",
+      "Inne"
+    ],
+    "Zbiornik retencyjny": [
+      "Uszkodzenie grobli",
+      "Erozja skarp",
+      "Awaria urządzeń spustowych",
+      "Inne"
+    ],
+    "WylotKanalizacjiDeszczowej": [
+      "Niedrożność",
+      "Cofka wody",
+      "Uszkodzenie konstrukcji",
+      "Inne"
+    ],
+    "Bariera mobilna/Szandory": [
+      "Uszkodzenia elementów",
+      "Brak kompletności/dostępności",
+      "Inne"
+    ],
+    "Rowy odwadniające/Drenaże osiedlowe": [
+      "Zamulenie",
+      "Zator",
+      "Zarośnięcie",
+      "Inne"
+    ],
+    "Studzienki i kratki ściekowe": [
+      "Niedrożność",
+      "Zanieczyszczenie",
+      "Zapadnięcie",
+      "Inne"
+    ],
+    "Zastawka w rowie lub małym cieku": [
+      "Nieszczelność",
+      "Zablokowanie",
+      "Korozja",
+      "Inne"
+    ],
+    "Przepompownia osiedlowa": [
+      "Niedrożność wlotu/wylotu",
+      "Zalanie terenu wokół",
+      "Inne"
+    ],
+    "Inny obiekt hydrotechniczny": []
+  };
+
+  function populateIssueOptions(objectType) {
+    const select = document.getElementById('issue_type');
+    const hint = document.getElementById('issue_hint');
+
+    select.innerHTML = "";
+
+    if (objectType === "Inny obiekt hydrotechniczny") {
+      document.getElementById('issueGroup').style.display = 'none';
+      hint.style.display = 'block';
+      hint.textContent = "Dla innego obiektu wpisz pełny opis w polu „Opis”.";
+      select.removeAttribute('required');
+      return;
+    } else {
+      document.getElementById('issueGroup').style.display = 'block';
+      hint.style.display = 'none';
+      select.setAttribute('required', 'required');
+    }
+
+    const options = ISSUE_OPTIONS[objectType] || [];
+    const ph = document.createElement('option');
+    ph.value = "";
+    ph.textContent = "— wybierz rodzaj uszkodzenia —";
+    ph.disabled = true;
+    ph.selected = true;
+    select.appendChild(ph);
+    options.forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt;
+      o.textContent = opt;
+      select.appendChild(o);
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const objectSel = document.getElementById('object_type');
+    populateIssueOptions(objectSel.value);
+    objectSel.addEventListener('change', () => populateIssueOptions(objectSel.value));
+  });
+
+  document.querySelector("#reportForm").addEventListener("submit", function (e) {
+    const objectType = document.getElementById('object_type').value;
+    const issueType = document.getElementById('issue_type').value;
+    if (objectType !== "Inny obiekt hydrotechniczny" && !issueType) {
+      e.preventDefault();
+      alert("Wybierz rodzaj uszkodzenia.");
+    }
+  });
+
   </script>
 </body>
 </html>
