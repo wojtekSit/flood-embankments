@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
   <meta charset="UTF-8">
   <title>Zamknij zgłoszenie</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="/public/app.css?v=1">
+  <link rel="stylesheet" href="/app/public/app.css?v=1">
 </head>
 <body>
   <header class="site-header">

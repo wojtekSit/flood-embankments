@@ -1,8 +1,8 @@
 <?php
-$host = 'db';
-$dbname = 'flood_monitor';
-$username = 'root';
-$password = 'root';
+$host = '';
+$dbname = '';
+$username = '';
+$password = '';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
@@ -10,3 +10,4 @@ try {
 } catch (PDOException $e) {
     die("Błąd połączenia z bazą danych: " . $e->getMessage());
 }
+?>

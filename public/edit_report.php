@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Edycja zgłoszenia</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
-  <link rel="stylesheet" href="/public/app.css?v=1">
+  <link rel="stylesheet" href="/app/public/app.css?v=1">
   <style>
     .map{
       height:320px;

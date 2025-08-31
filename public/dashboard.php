@@ -11,7 +11,7 @@ $user_id = $_SESSION['user_id'];
 $errors = [];
 $success = "";
 
-// form handling (LOGIKA BEZ ZMIAN)
+// form handling
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $allowed = [
     "Wał przeciwpowodziowy" => [
@@ -90,8 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   ];
   $object_type = $_POST['object_type'];
   $issue_type = $_POST['issue_type'];
-  $gps_lat = $_POST['gps_lat'];
-  $gps_lng = $_POST['gps_lng'];
+  $gps_lat     = isset($_POST['gps_lat']) ? (float)$_POST['gps_lat'] : null;
+  $gps_lng     = isset($_POST['gps_lng']) ? (float)$_POST['gps_lng'] : null;
   $damage_level = $_POST['damage_level'];
   $description = $_POST['description'];
 
@@ -109,14 +109,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $mime = $img_info['mime'];
         $src = null;
 
-        // wczytaj obrazek do GD w zależności od formatu
         switch ($mime) {
             case 'image/jpeg':
                 $src = imagecreatefromjpeg($_FILES['photo']['tmp_name']);
                 break;
             case 'image/png':
                 $src = imagecreatefrompng($_FILES['photo']['tmp_name']);
-                // usuń przezroczystość (WebP w trybie truecolor + alpha też działa, ale bywa problematyczne)
                 imagepalettetotruecolor($src);
                 imagealphablending($src, true);
                 imagesavealpha($src, true);
@@ -155,28 +153,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }  
   if (empty($errors)) {
     $stmt = $pdo->prepare("
-    INSERT INTO app_reports (
-        user_id, object_type, issue_type,
-        gps_lat, gps_lng, gps_point,
-        photo, damage_level, description
-    )
-    VALUES (
-        ?, ?, ?, ?, ?, ST_SRID(POINT(?, ?), 4326), ?, ?, ?
-    )
-");
+      INSERT INTO app_reports (
+          user_id, object_type, issue_type,
+          gps_lat, gps_lng, gps_point,
+          photo, damage_level, description
+      ) VALUES (
+          :user_id, :object_type, :issue_type,
+          :gps_lat, :gps_lng, ST_SRID(POINT(:lng, :lat), 4326),
+          :photo, :damage_level, :description
+      )
+    ");
 
-  $stmt->execute([
-      $user_id,
-      $object_type,
-      $issue_type,
-      $gps_lat,
-      $gps_lng,
-      $gps_lng,
-      $gps_lat, // lat musi byc drugie
-      $photo_name,
-      $damage_level,
-      $description
-  ]);
+    $stmt->execute([
+      ':user_id'      => $user_id,
+      ':object_type'  => $object_type,
+      ':issue_type'   => $issue_type,
+      ':gps_lat'      => $gps_lat,          
+      ':gps_lng'      => $gps_lng,           
+      ':lng'          => $gps_lng,           
+      ':lat'          => $gps_lat,           
+      ':photo'        => $photo_name,
+      ':damage_level' => $damage_level,
+      ':description'  => $description
+    ]);
         $success = "Zgłoszenie zostało zapisane.";
     }
 }
@@ -187,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Formularz zgłoszenia</title>
-  <link rel="stylesheet" href="/public/app.css?v=1" />
+  <link rel="stylesheet" href="/app/public/app.css?v=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 </head>
 <body>

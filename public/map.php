@@ -16,7 +16,7 @@ $reports = $stmt->fetchAll(PDO::FETCH_ASSOC);
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Mapa zgłoszeń</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-  <link rel="stylesheet" href="/public/app.css?v=1">
+  <link rel="stylesheet" href="/app/public/app.css?v=1">
   <style>
     html,body{margin:0;height:100%}
     #map{height:100%;width:100%}

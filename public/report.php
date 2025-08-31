@@ -1,7 +1,13 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+set_error_handler(function($no,$str,$file,$line){ throw new ErrorException($str,0,$no, $file,$line); });
+
 require_once '../includes/auth_admin.php';
 require_once '../config/db.php';
 require_once '../vendor/autoload.php';
+
 
 use Dompdf\Dompdf;
 
@@ -16,7 +22,7 @@ if (!$start_date || !$end_date) {
 $stmt = $pdo->prepare("
     SELECT r.*, u.name, u.surname
     FROM app_reports r
-    JOIN users u ON r.user_id = u.id
+    JOIN app_users u ON r.user_id = u.id
     WHERE DATE(r.created_at) BETWEEN ? AND ?
     ORDER BY r.created_at DESC
 ");
